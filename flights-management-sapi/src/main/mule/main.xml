@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- #%L MuleSoft Training - Anypoint Platform Development: Level 2 %% Copyright (C) 2019 - 2021 MuleSoft, Inc. All rights reserved. http://www.mulesoft.com %% The software in this package is published under the terms of the Creative Commons Attribution-NonCommercial-NoDerivatives 
 	4.0 International Public License, a copy of which has been included with this distribution in the LICENSE.txt file. #L% -->
-<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="  http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd  http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd  http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd   http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd  http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd  http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd    http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
-http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+<mule xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="  http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd  http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd  http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd   http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd  http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd  http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd    http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
 	<flow name="check-in-by-pnr">
 		<logger level="INFO" message="#['Checking-in by PNR: ' ++ (vars.PNR default '')]" doc:name="START" />
 		<!-- TODO: create checkIn SOAP payload -->
@@ -20,8 +23,7 @@ http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/
 			</error-handler>
 		</try>
 		<logger level="INFO" message="After receiving checkIn SOAP WS response" doc:name="After WS" />
-    <set-payload value="#[output application/java --- payload.body.checkInResponse.return as Boolean]"
-      doc:name="Success JSON response" />
+		<set-payload value="#[output application/java --- payload.body.checkInResponse.return as Boolean]" doc:name="Success JSON response" />
 		<logger level="INFO" message="Checked-in by PNR" doc:name="END" />
 	</flow>
 	<sub-flow name="flights-wsc-check-in" doc:id="0b9a3315-d197-4e9e-8521-8d6b3a5a7291">
@@ -122,4 +124,87 @@ ns0#checkIn: {
 		</ee:transform>
 		<logger level="INFO" message="Got ticket by PNR" doc:name="END" />
 	</flow>
+	<flow name="receive-cancellation-notification">
+		<http:listener path="/api/cancelFlight" allowedMethods="POST" config-ref="apiHttpListenerConfig">
+			<http:response statusCode="#[vars.httpStatus default 202]">
+				<http:body>#[output text/plain --- vars.response default'OK']</http:body>
+			</http:response>
+		</http:listener>
+		<logger level="INFO" message="Received Cancellation Notification" />
+		<vm:publish doc:name="Publish" doc:id="30c063ee-b445-40f0-9701-647dd18010f2" config-ref="vmConfig" queueName="flight-cancel-notification-queue" sendCorrelationId="ALWAYS" timeout="5000"/>
+	</flow>
+	<flow name="deliver-flight-cancelled-event" doc:id="382ae1d0-ba38-4d22-a5e3-c205f549f5f1">
+		<vm:listener queueName="flight-cancel-notification-queue" doc:name="flight-cancel-notification-queue" doc:id="e2bc92c5-3c0c-43d9-a60f-83e6eca9a651" config-ref="vmConfig" transactionalAction="ALWAYS_BEGIN" timeout="5000">
+			<redelivery-policy maxRedeliveryCount="3" idExpression="#[correlationId]" />
+		</vm:listener>
+		<logger level="INFO" doc:name="Received" doc:id="86f0f0ab-bc02-4f84-bbc9-b3a7a27512b1" message="#['Received']" />
+		<try doc:name="Try" doc:id="c8daafb6-f1c9-4e9b-ad7c-91fb6ec498b8" transactionalAction="BEGIN_OR_JOIN">
+			<ee:transform>
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+          output application/json
+          ---
+          {
+            pnr: payload.CancellationNotification.PNR,
+            lastNameOfPassenger: payload.CancellationNotification.PassengerLastName
+          }]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<set-variable value="#[true]" doc:name="msgValid = true" doc:id="dd3ed5c3-45ad-4259-a8e4-5b01ef0cd417" variableName="msgValid"/>
+			<error-handler>
+				<on-error-continue enableNotifications="false" logException="false">
+					<logger level="ERROR" message="Giving up" doc:name="Giving up" />
+					<flow-ref name="send-to-vm-dlq" doc:name="send-to-vm-dlq" />
+					<set-variable value="#[false]" doc:name="msgValid = false" doc:id="ef96fe57-0e50-4368-b4ed-319f8a5fb5b3" variableName="msgValid"/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<!-- <error-handler> <on-error-continue type="MULE:REDELIVERY_EXHAUSTED" enableNotifications="false" logException="false"> <logger level="ERROR" message="Giving up" doc:name="Giving up" /> <flow-ref name="send-to-vm-dlq" doc:name="send-to-vm-dlq" /> 
+			</on-error-continue> </error-handler> -->
+		<choice doc:name="Choice" doc:id="5e3c94f8-876d-48fd-a9f9-fae52317623f" >
+			<when expression="#[vars.msgValid]">
+				<anypoint-mq:publish doc:name="cancelled-flights-mobile-queue-dev" doc:id="c2c4b50b-bda6-40e6-8983-97d99701d769" config-ref="amqConfig" destination="cancelled-flights-mobile-queue-dev">
+					<reconnect count="3" />
+				</anypoint-mq:publish>
+			</when>
+		</choice>
+	</flow>
+	<sub-flow name="send-to-vm-dlq" doc:id="b8d6ba5a-9c49-4bc5-b1cd-d4933f5323d3" >
+		<vm:publish queueName="flight-cancel-notification-dlq" doc:name="flight-cancel-notification-dlq" doc:id="20970aeb-5e7f-4267-ab5f-a5c42e271dd9" config-ref="vmConfig" timeout="5000"/>
+	</sub-flow>
+	<flow name="handle-dlq" doc:id="edf743e6-e483-4401-9c35-8f6eb43ca01c" >
+		<vm:listener doc:name="flight-cancel-notification-dlq" doc:id="c61720eb-abe5-49f7-8910-db1d0f0604f2" config-ref="vmConfig" queueName="flight-cancel-notification-dlq" timeout="5000"/>
+		<logger level="INFO" doc:name="Processing invalid messages" doc:id="4c21291f-27a0-455c-80af-021b05fda81e" message="#['Processing invalid messages...']"/>
+	</flow>
+	<flow name="register-callback">
+		<scheduler>
+			<scheduling-strategy>
+				<fixed-frequency frequency="365000" timeUnit="DAYS" />
+			</scheduling-strategy>
+		</scheduler>
+		<ee:transform>
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+        output application/xml
+        ns ns0 http://flightsMgmt.sword.com/
+        ---
+        {
+        ns0#registerForCancellationNotifications: {
+            callbackURL: p("api.callback.url")
+        }
+        }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<try>
+			<flow-ref name="register-for-cancellation-notifications" doc:name="register-for-cancellation-notifications" />
+			<error-handler>
+				<on-error-continue>
+					<raise-error type="APP:CANT_REGISTER_CALLBACK" doc:name="APP:CANT_REGISTER_CALLBACK" />
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</flow>
+	<sub-flow name="register-for-cancellation-notifications">
+		<wsc:consume operation="registerForCancellationNotifications" config-ref="flightsWSCConfig" />
+	</sub-flow>
 </mule>
